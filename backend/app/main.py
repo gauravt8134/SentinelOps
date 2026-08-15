@@ -1,13 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.db.database import Base, engine
+from app.models import server  # noqa: F401
+from app.api import servers
 
-# Create the FastAPI application
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="AI-Powered Observability, Monitoring & Security Platform"
 )
+
+app.include_router(servers.router)
 
 # CORS middleware
 # This allows the React frontend to talk to this backend
