@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.database import Base, engine
 from app.models import server  # noqa: F401
+from app.models import metric  # noqa: F401
 from app.api import servers
+from app.api import metrics
 
 Base.metadata.create_all(bind=engine)
 
@@ -14,10 +16,8 @@ app = FastAPI(
 )
 
 app.include_router(servers.router)
+app.include_router(metrics.router)
 
-# CORS middleware
-# This allows the React frontend to talk to this backend
-# Without this, the browser blocks all requests from frontend to backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,8 +26,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Root endpoint
-# This is the first API we ever built in SentinelOps
 @app.get("/")
 def root():
     return {
@@ -37,8 +35,6 @@ def root():
         "message": "Welcome to SentinelOps API"
     }
 
-# Health check endpoint
-# Used by Docker and AWS to check if the server is alive
 @app.get("/health")
 def health_check():
     return {
