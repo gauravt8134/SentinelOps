@@ -7,10 +7,12 @@ from app.models import metric  # noqa: F401
 from app.models import website  # noqa: F401
 from app.models import website_check  # noqa: F401
 from app.models import apm_log  # noqa: F401
+from app.models import rum_log  # noqa: F401
 from app.api import servers
 from app.api import metrics
 from app.api import websites
 from app.api import apm
+from app.api import rum
 from app.core.scheduler import start_scheduler
 from app.core.middleware import APMMiddleware
 
@@ -28,6 +30,7 @@ app.include_router(servers.router)
 app.include_router(metrics.router)
 app.include_router(websites.router)
 app.include_router(apm.router)
+app.include_router(rum.router)
 
 app.add_middleware(
     CORSMiddleware,
