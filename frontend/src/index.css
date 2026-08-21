@@ -1,0 +1,44 @@
+:root {
+  --bg-primary: #0a0e14;
+  --bg-secondary: #10151f;
+  --bg-card: #131924;
+  --border-color: #1f2733;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --accent-cyan: #00e5ff;
+  --accent-green: #39ff88;
+  --accent-red: #ff4757;
+  --accent-amber: #ffb020;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}

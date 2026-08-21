@@ -1,0 +1,69 @@
+.stat-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.stat-card:hover {
+  border-color: var(--accent-cyan);
+}
+
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-cyan {
+  background-color: rgba(0, 229, 255, 0.1);
+  color: var(--accent-cyan);
+}
+
+.icon-green {
+  background-color: rgba(57, 255, 136, 0.1);
+  color: var(--accent-green);
+}
+
+.icon-red {
+  background-color: rgba(255, 71, 87, 0.1);
+  color: var(--accent-red);
+}
+
+.icon-amber {
+  background-color: rgba(255, 176, 32, 0.1);
+  color: var(--accent-amber);
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.stat-suffix {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-left: 4px;
+  font-weight: 500;
+}
