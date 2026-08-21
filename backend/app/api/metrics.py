@@ -19,7 +19,16 @@ def create_metric(metric: MetricCreate, db: Session = Depends(get_db)):
         server_id=metric.server_id,
         cpu_percent=metric.cpu_percent,
         memory_percent=metric.memory_percent,
-        disk_percent=metric.disk_percent
+        disk_percent=metric.disk_percent,
+        network_in=metric.network_in,
+        network_out=metric.network_out,
+        uptime_seconds=metric.uptime_seconds,
+        processes=metric.processes,
+        os_type=metric.os_type,
+        top_process=metric.top_process,
+        
+        # THE NEW FEATURE: Docker Tracking!
+        docker_containers=metric.docker_containers
     )
     db.add(new_metric)
     db.commit()
