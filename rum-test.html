@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RUM Test Page</title>
+</head>
+<body>
+    <h1>SentinelOps RUM Test Page</h1>
+    <p>This page automatically reports its load time to SentinelOps.</p>
+
+    <button onclick="triggerError()">Trigger a Test Error</button>
+
+    <script>
+        window.addEventListener('load', function() {
+            const loadTime = performance.now();
+
+            fetch('http://127.0.0.1:8000/rum/log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    page_url: window.location.href,
+                    load_time_ms: loadTime,
+                    user_agent: navigator.userAgent
+                })
+            });
+        });
+
+        window.addEventListener('error', function(event) {
+            fetch('http://127.0.0.1:8000/rum/log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    page_url: window.location.href,
+                    error_message: event.message,
+                    user_agent: navigator.userAgent
+                })
+            });
+        });
+
+        function triggerError() {
+            undefinedFunctionThatDoesNotExist();
+        }
+    </script>
+</body>
+</html>

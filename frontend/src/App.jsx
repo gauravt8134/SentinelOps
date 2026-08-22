@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Servers from './pages/Servers';
-import ServerDetails from './pages/ServerDetails'; // 1. Import the new page
+import ServerDetails from './pages/ServerDetails';
+import Websites from './pages/Websites'; // 1. Import the Websites page
 import './App.css';
 
 function App() {
@@ -14,8 +15,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/servers" element={<Servers />} />
-            {/* 2. Add the dynamic route for the drill-down page */}
             <Route path="/servers/:id" element={<ServerDetails />} />
+            <Route path="/websites" element={<Websites />} /> {/* 2. Add the Websites route */}
           </Routes>
         </main>
       </div>

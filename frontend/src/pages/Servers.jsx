@@ -4,7 +4,7 @@ import {
   Server as ServerIcon, Cpu, HardDrive, MemoryStick, 
   Clock, Activity, ArrowDown, ArrowUp, AlertTriangle, AlertCircle,
   Search, Filter, MoreVertical, TrendingUp, TrendingDown, Tag, ChevronRight,
-  Terminal, BellOff, RefreshCw
+  Terminal, BellOff, RefreshCw, CheckCircle2
 } from 'lucide-react';
 import api from '../api';
 import './Servers.css';
@@ -65,13 +65,12 @@ function Servers() {
   const [previousMetrics, setPreviousMetrics] = useState({});
   const [loading, setLoading] = useState(true);
   
-  // NEW: State for the 3-dot dropdown menu
   const [activeDropdown, setActiveDropdown] = useState(null);
-  
-  // NEW: Router navigation
   const navigate = useNavigate();
 
-  // Control Bar State
+  // NEW: Toast Notification State
+  const [toastMessage, setToastMessage] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('name');
@@ -106,6 +105,28 @@ function Servers() {
     const interval = setInterval(fetchServers, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // NEW: Action Handler
+  const handleServerAction = (serverId, serverName, actionType) => {
+    setActiveDropdown(null); // Close the menu
+    
+    // Simulate API request to backend
+    // api.post(`/servers/${serverId}/action`, { type: actionType });
+
+    // Show a success toast notification
+    if (actionType === 'logs') {
+      setToastMessage(`Fetching recent logs for ${serverName}...`);
+    } else if (actionType === 'mute') {
+      setToastMessage(`Alerts muted for ${serverName} (1 hour).`);
+    } else if (actionType === 'restart') {
+      setToastMessage(`Restart command sent to ${serverName} agent.`);
+    }
+
+    // Hide the toast after 3 seconds
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
 
   const processedServers = servers
     .filter(server => {
@@ -189,7 +210,6 @@ function Servers() {
           return (
             <div className={`server-card ${isOffline ? 'card-offline' : ''}`} key={server.id} style={{ position: 'relative' }}>
               
-              {/* TOP RIGHT: STATUS BADGE & QUICK ACTION MENU */}
               <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 10 }}>
                 <div 
                   className={`server-status ${statusClass}`} 
@@ -198,7 +218,6 @@ function Servers() {
                   {displayStatus}
                 </div>
                 
-                {/* 3-Dot Container */}
                 <div style={{ position: 'relative' }}>
                   <div 
                     style={{ cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center' }}
@@ -207,16 +226,16 @@ function Servers() {
                     <MoreVertical size={16} />
                   </div>
                   
-                  {/* The Dropdown Menu Box */}
                   {activeDropdown === server.id && (
                     <div className="action-dropdown">
-                      <button onClick={() => setActiveDropdown(null)}>
+                      {/* NEW: Attached onClick handlers to our new function */}
+                      <button onClick={() => handleServerAction(server.id, server.name, 'logs')}>
                         <Terminal size={14} /> View Logs
                       </button>
-                      <button onClick={() => setActiveDropdown(null)}>
+                      <button onClick={() => handleServerAction(server.id, server.name, 'mute')}>
                         <BellOff size={14} /> Mute Alerts
                       </button>
-                      <button className="danger-btn" onClick={() => setActiveDropdown(null)}>
+                      <button className="danger-btn" onClick={() => handleServerAction(server.id, server.name, 'restart')}>
                         <RefreshCw size={14} /> Restart Agent
                       </button>
                     </div>
@@ -225,7 +244,6 @@ function Servers() {
               </div>
 
               <div className="server-card-header" style={{ alignItems: 'flex-start', display: 'flex', gap: '12px', width: '100%' }}>
-                
                 <div className="server-icon" style={{ marginTop: '2px' }}>
                   <ServerIcon size={18} />
                 </div>
@@ -329,7 +347,6 @@ function Servers() {
                   </div>
                   
                   <div style={{ marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #232836', textAlign: 'center' }}>
-                    {/* BUTTON NOW NAVIGATES TO THE SERVER ID ROUTE */}
                     <button 
                       onClick={() => navigate(`/servers/${server.id}`)}
                       style={{ background: 'transparent', border: 'none', color: '#3b82f6', fontSize: '0.85em', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
@@ -349,6 +366,30 @@ function Servers() {
           );
         })}
       </div>
+
+      {/* NEW: Toast Notification Component */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          background: '#10b981',
+          color: '#0f1117',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          fontWeight: '500',
+          zIndex: 9999,
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          <CheckCircle2 size={18} />
+          {toastMessage}
+        </div>
+      )}
+
     </div>
   );
 }
