@@ -28,3 +28,18 @@ def get_websites(db: Session = Depends(get_db)):
 def get_website_checks(website_id: int, db: Session = Depends(get_db)):
     checks = db.query(WebsiteCheck).filter(WebsiteCheck.website_id == website_id).all()
     return checks
+
+@router.delete("/websites/{website_id}")
+def delete_website(website_id: int, db: Session = Depends(get_db)):
+    # Find the specific website in the database
+    site = db.query(Website).filter(Website.id == website_id).first()
+    
+    # If it doesn't exist, throw a 404 error
+    if not site:
+        raise HTTPException(status_code=404, detail="Website not found")
+    
+    # Delete the website and commit the change
+    db.delete(site)
+    db.commit()
+    
+    return {"message": "Website deleted successfully"}

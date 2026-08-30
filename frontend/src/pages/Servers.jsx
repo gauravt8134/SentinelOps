@@ -4,7 +4,7 @@ import {
   Server as ServerIcon, Cpu, HardDrive, MemoryStick, 
   Clock, Activity, ArrowDown, ArrowUp, AlertTriangle, AlertCircle,
   Search, Filter, MoreVertical, TrendingUp, TrendingDown, Tag, ChevronRight,
-  Terminal, BellOff, RefreshCw, CheckCircle2
+  Terminal, BellOff, RefreshCw, CheckCircle2, Plus, X
 } from 'lucide-react';
 import api from '../api';
 import './Servers.css';
@@ -68,8 +68,16 @@ function Servers() {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const navigate = useNavigate();
 
-  // NEW: Toast Notification State
+  // Toast Notification State
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Add Server Modal States
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newServerForm, setNewServerForm] = useState({ name: '', ip_address: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Used to force a fast refresh when a new server is added
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -104,16 +112,11 @@ function Servers() {
     fetchServers();
     const interval = setInterval(fetchServers, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshTrigger]); // Added refreshTrigger to dependency array
 
-  // NEW: Action Handler
   const handleServerAction = (serverId, serverName, actionType) => {
-    setActiveDropdown(null); // Close the menu
+    setActiveDropdown(null); 
     
-    // Simulate API request to backend
-    // api.post(`/servers/${serverId}/action`, { type: actionType });
-
-    // Show a success toast notification
     if (actionType === 'logs') {
       setToastMessage(`Fetching recent logs for ${serverName}...`);
     } else if (actionType === 'mute') {
@@ -122,10 +125,36 @@ function Servers() {
       setToastMessage(`Restart command sent to ${serverName} agent.`);
     }
 
-    // Hide the toast after 3 seconds
     setTimeout(() => {
       setToastMessage(null);
     }, 3000);
+  };
+
+  // ADD SERVER LOGIC
+  const handleAddServer = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await api.post('/servers', {
+        name: newServerForm.name,
+        ip_address: newServerForm.ip_address,
+        status: 'online'
+      });
+      
+      setNewServerForm({ name: '', ip_address: '' });
+      setIsAddModalOpen(false);
+      
+      setToastMessage(`${newServerForm.name} registered successfully!`);
+      setTimeout(() => setToastMessage(null), 3000);
+
+      // Force an immediate fetch to show the new card
+      setRefreshTrigger(prev => prev + 1); 
+    } catch (error) {
+      console.error('Failed to add server:', error);
+      alert('Error adding server. Check the console.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const processedServers = servers
@@ -187,6 +216,14 @@ function Servers() {
             <option value="ram">Sort: Highest RAM</option>
             <option value="uptime">Sort: Highest Uptime</option>
           </select>
+
+          {/* ADD SERVER BUTTON */}
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', fontSize: '0.85em' }}
+          >
+            <Plus size={16} /> Add Node
+          </button>
         </div>
       </div>
 
@@ -228,7 +265,6 @@ function Servers() {
                   
                   {activeDropdown === server.id && (
                     <div className="action-dropdown">
-                      {/* NEW: Attached onClick handlers to our new function */}
                       <button onClick={() => handleServerAction(server.id, server.name, 'logs')}>
                         <Terminal size={14} /> View Logs
                       </button>
@@ -367,7 +403,66 @@ function Servers() {
         })}
       </div>
 
-      {/* NEW: Toast Notification Component */}
+      {/* ADD SERVER MODAL */}
+      {isAddModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#1e293b', padding: '24px', borderRadius: '12px', width: '400px', border: '1px solid #334155', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px' }}>Register New Node</h3>
+              <button onClick={() => setIsAddModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddServer}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#cbd5e1', fontSize: '13px', fontWeight: '500' }}>Hostname / Alias</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={newServerForm.name} 
+                  onChange={e => setNewServerForm({...newServerForm, name: e.target.value})} 
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #475569', backgroundColor: '#0f172a', color: '#f8fafc', boxSizing: 'border-box' }} 
+                  placeholder="e.g., Database-Node-01" 
+                />
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#cbd5e1', fontSize: '13px', fontWeight: '500' }}>IP Address</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={newServerForm.ip_address} 
+                  onChange={e => setNewServerForm({...newServerForm, ip_address: e.target.value})} 
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #475569', backgroundColor: '#0f172a', color: '#f8fafc', boxSizing: 'border-box' }} 
+                  placeholder="e.g., 26.124.99.10" 
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsAddModalOpen(false)} 
+                  style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #475569', color: '#cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  style={{ padding: '8px 16px', backgroundColor: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.7 : 1 }}
+                >
+                  {isSubmitting ? 'Registering...' : 'Add Node'}
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification Component */}
       {toastMessage && (
         <div style={{
           position: 'fixed',

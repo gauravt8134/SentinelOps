@@ -1,19 +1,31 @@
 import { useState, useEffect } from 'react';
-import { Globe, Plus, ShieldCheck, AlertCircle, Clock, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Search, Filter, Plus, Trash2, CheckCircle2, AlertCircle, X, Clock, Activity, ShieldCheck, Lock } from 'lucide-react';
+import { LineChart, Line, ResponsiveContainer, YAxis, Tooltip } from 'recharts';
 import api from '../api';
 import './Websites.css';
 
 function Websites() {
   const [websites, setWebsites] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Modal State for adding a new website
   const [showModal, setShowModal] = useState(false);
   const [newUrl, setNewUrl] = useState('');
   const [newName, setNewName] = useState('');
+  const [newExpectedText, setNewExpectedText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const [selectedSite, setSelectedSite] = useState(null);
 
   useEffect(() => {
+    // 1. Fetch immediately on page load
     fetchWebsites();
+
+    // 2. Set up a silent background timer to fetch every 60 seconds
+    const intervalId = setInterval(() => {
+      fetchWebsites();
+    }, 60000);
+
+    // 3. Clean up the timer if the user navigates to a different page
+    return () => clearInterval(intervalId);
   }, []);
 
   async function fetchWebsites() {
@@ -30,11 +42,15 @@ function Websites() {
   const handleAddWebsite = async (e) => {
     e.preventDefault();
     if (!newUrl || !newName) return;
-
     try {
-      await api.post('/websites', { name: newName, url: newUrl });
-      setNewUrl('');
-      setNewName('');
+      await api.post('/websites', { 
+        name: newName, 
+        url: newUrl,
+        expected_text: newExpectedText || null 
+      });
+      setNewUrl(''); 
+      setNewName(''); 
+      setNewExpectedText('');
       setShowModal(false);
       fetchWebsites();
     } catch (error) {
@@ -42,122 +58,227 @@ function Websites() {
     }
   };
 
-  if (loading) return <div className="loading-text">Loading uptime monitors...</div>;
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this endpoint?")) {
+      try {
+        await api.delete(`/websites/${id}`);
+        if (selectedSite && selectedSite.id === id) setSelectedSite(null);
+        fetchWebsites();
+      } catch (error) {
+        console.error('Failed to delete website:', error);
+      }
+    }
+  };
+
+  // --- Dynamic Stats Banner Calculations ---
+  const totalMonitors = websites.length;
+  const activeAlerts = websites.filter(site => site.status !== 'up' && site.status !== 'UP').length;
+  const avgResponseTime = totalMonitors > 0 
+    ? Math.round(websites.reduce((acc, site) => acc + (site.response_time_ms || 0), 0) / totalMonitors)
+    : 0;
+  const globalUptime = totalMonitors > 0 
+    ? (((totalMonitors - activeAlerts) / totalMonitors) * 100).toFixed(2)
+    : 100.00;
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
+    <div className="websites-container">
+      <div className="header-flex">
         <div>
-          <h1 className="page-title" style={{ margin: 0 }}>Uptime & Synthetic Monitoring</h1>
-          <p className="page-subtitle" style={{ margin: 0 }}>{websites.length} endpoints monitored globally</p>
+          <h1 className="page-title">Synthetic Monitoring</h1>
+          <p className="page-subtitle">Proactively monitor API endpoints and web services.</p>
         </div>
-
-        <button 
-          onClick={() => setShowModal(true)}
-          style={{ background: '#3b82f6', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '6px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-        >
-          <Plus size={16} /> Add Endpoint
+        <button className="btn-primary" onClick={() => setShowModal(true)}>
+          <Plus size={16} /> New Monitor
         </button>
       </div>
 
-      {/* Websites Grid */}
-      <div className="websites-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-        {websites.map((site) => {
-          const isUp = site.status === 'healthy' || site.status === 'UP';
+      <div className="stats-banner">
+        <div className="stat-box"><span className="stat-label">Total Monitors</span><span className="stat-value">{totalMonitors}</span></div>
+        <div className="stat-box"><span className="stat-label">Global Uptime</span><span className={`stat-value ${globalUptime >= 99 ? 'text-success' : 'text-danger'}`}>{globalUptime}%</span></div>
+        <div className="stat-box"><span className="stat-label">Avg Response Time</span><span className="stat-value">{avgResponseTime} ms</span></div>
+        <div className="stat-box"><span className="stat-label">Active Alerts</span><span className={`stat-value ${activeAlerts > 0 ? 'text-danger' : 'text-success'}`}>{activeAlerts}</span></div>
+      </div>
 
-          return (
-            <div key={site.id} style={{ background: '#14171f', border: '1px solid #232836', borderRadius: '8px', padding: '20px', position: 'relative' }}>
+      <div className="table-controls">
+        <div className="search-bar">
+          <Search size={16} color="#64748b" />
+          <input type="text" placeholder="Search by name or URL..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+        </div>
+        <button className="btn-secondary"><Filter size={14} /> Filter</button>
+      </div>
+
+      <div className="table-container">
+        <table className="enterprise-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Endpoint Definition</th>
+              <th>Environment</th>
+              <th>Response Time</th>
+              <th>Details</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {websites.map((site, index) => {
+              const isUp = site.status === 'up' || site.status === 'UP';
+              const isAssertionFail = site.status === 'Assertion Failed';
+              const responseTime = site.response_time_ms ? Math.round(site.response_time_ms) : 0;
               
-              {/* Status Badge */}
-              <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
-                <span style={{ 
-                  background: isUp ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
-                  color: isUp ? '#10b981' : '#ef4444', 
-                  border: `1px solid ${isUp ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
-                  padding: '2px 8px', borderRadius: '4px', fontSize: '0.65em', fontWeight: 'bold', textTransform: 'uppercase'
-                }}>
-                  {isUp ? 'Operational' : 'Degraded'}
-                </span>
-              </div>
+              // Get the most recent check for the waterfall metrics
+              const latestCheck = site.checks && site.checks.length > 0 
+                ? site.checks[site.checks.length - 1] 
+                : null;
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ background: '#1a1d24', padding: '10px', borderRadius: '6px', border: '1px solid #2d3748' }}>
-                  <Globe size={18} color="#0db7ed" />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1em', color: '#fff' }}>{site.name}</h3>
-                  <a href={site.url} target="_blank" rel="noreferrer" style={{ color: '#94a3b8', fontSize: '0.8em', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                    {site.url} <ExternalLink size={12} />
-                  </a>
-                </div>
-              </div>
+              return (
+                <tr key={site.id || index} onClick={() => setSelectedSite({ ...site, isUp, isAssertionFail, responseTime, latestCheck })} className="clickable-row">
+                  <td>
+                    <div className={`status-pill ${isUp ? 'status-up' : (isAssertionFail ? 'status-warn' : 'status-down')}`}>
+                      {isUp ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                      {isUp ? 'OK' : (isAssertionFail ? 'MISMATCH' : 'FAIL')}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="site-info">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="http-badge get">GET</span>
+                        <span className="site-name">{site.name || 'API Endpoint'}</span>
+                      </div>
+                      <a href={site.url} target="_blank" rel="noreferrer" className="site-url" onClick={(e) => e.stopPropagation()}>{site.url}</a>
+                    </div>
+                  </td>
+                  <td><span className="env-tag prod">Production</span></td>
+                  <td>
+                    <div className="response-time-col">
+                      <span className="resp-text">{responseTime} ms</span>
+                      <div style={{ width: '80px', height: '24px' }}>
+                        {site.checks && site.checks.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={site.checks.slice(-20)}>
+                              <YAxis domain={['dataMin', 'dataMax']} hide />
+                              <Tooltip contentStyle={{ display: 'none' }} cursor={false} />
+                              <Line 
+                                type="monotone" 
+                                dataKey="response_time_ms" 
+                                stroke={isUp ? "#10b981" : "#ef4444"} 
+                                strokeWidth={2} 
+                                dot={false} 
+                                isAnimationActive={false} 
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <span style={{ fontSize: '10px', color: '#64748b' }}>No data</span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
+                      {site.expected_text && (
+                        <span style={{ color: '#94a3b8' }}><ShieldCheck size={12} color={isAssertionFail ? "#ef4444" : "#10b981"}/> Contains: "{site.expected_text}"</span>
+                      )}
+                      {site.ssl_expiry_days !== null && (
+                        <span style={{ color: '#94a3b8' }}><Lock size={12} color={site.ssl_expiry_days > 14 ? "#10b981" : "#ef4444"}/> SSL: {site.ssl_expiry_days} days</span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <button className="action-btn" onClick={(e) => handleDelete(e, site.id)}>
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-              {/* Quick Metrics Bar */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', background: '#0f1117', padding: '12px', borderRadius: '6px', border: '1px solid #232836', fontSize: '0.85em' }}>
-                <div>
-                  <span style={{ color: '#64748b', display: 'block', fontSize: '0.75em' }}>HTTP Response</span>
-                  <strong style={{ color: '#e2e8f0' }}>{site.response_time || '45'} ms</strong>
-                </div>
-                <div>
-                  <span style={{ color: '#64748b', display: 'block', fontSize: '0.75em' }}>Uptime (30d)</span>
-                  <strong style={{ color: '#10b981' }}>99.98%</strong>
-                </div>
-                <div>
-                  <span style={{ color: '#64748b', display: 'block', fontSize: '0.75em' }}>SSL Valid</span>
-                  <strong style={{ color: '#3b82f6' }}>Yes</strong>
-                </div>
+      {/* Slide-Out Details Panel */}
+      <div className={`slide-panel-overlay ${selectedSite ? 'open' : ''}`} onClick={() => setSelectedSite(null)}></div>
+      <div className={`slide-panel ${selectedSite ? 'open' : ''}`}>
+        {selectedSite && (
+          <div className="panel-content">
+            <div className="panel-header">
+              <div>
+                <h2>{selectedSite.name || 'API Endpoint'}</h2>
+                <p>{selectedSite.url}</p>
               </div>
-
+              <button className="close-btn" onClick={() => setSelectedSite(null)}><X size={20} /></button>
             </div>
-          );
-        })}
+            
+            <div className="panel-section">
+              <h3><Activity size={16} /> Latest Test Result</h3>
+              <div className="result-card">
+                <div className={`status-pill ${selectedSite.isUp ? 'status-up' : 'status-down'}`}>
+                  {selectedSite.isUp ? 'PASSED' : 'FAILED'} 
+                  {selectedSite.latestCheck?.status_code ? ` (HTTP ${selectedSite.latestCheck.status_code})` : ''}
+                </div>
+                <h2>{selectedSite.responseTime} ms</h2>
+                <p>Checked from Local SentinelOps Agent</p>
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <h3><Clock size={16} /> Network Timing Waterfall</h3>
+              {selectedSite.latestCheck ? (
+                <div className="waterfall-container">
+                  <div className="waterfall-row">
+                    <span className="wf-label">DNS Lookup</span>
+                    <div className="wf-bar dns" style={{width: '15%'}}></div>
+                    <span className="wf-time">{selectedSite.latestCheck.dns_time_ms !== null ? `${selectedSite.latestCheck.dns_time_ms} ms` : '--'}</span>
+                  </div>
+                  <div className="waterfall-row">
+                    <span className="wf-label">TCP Connection</span>
+                    <div className="wf-bar tcp" style={{width: '25%', marginLeft: '15%'}}></div>
+                    <span className="wf-time">{selectedSite.latestCheck.tcp_time_ms !== null ? `${selectedSite.latestCheck.tcp_time_ms} ms` : '--'}</span>
+                  </div>
+                  {selectedSite.latestCheck.tls_time_ms !== null && (
+                    <div className="waterfall-row">
+                      <span className="wf-label">TLS Handshake</span>
+                      <div className="wf-bar tls" style={{width: '40%', marginLeft: '40%'}}></div>
+                      <span className="wf-time">{selectedSite.latestCheck.tls_time_ms} ms</span>
+                    </div>
+                  )}
+                  <div className="waterfall-row">
+                    <span className="wf-label">TTFB</span>
+                    <div className="wf-bar ttfb" style={{width: '10%', marginLeft: '80%'}}></div>
+                    <span className="wf-time">{selectedSite.latestCheck.ttfb_ms !== null ? `${selectedSite.latestCheck.ttfb_ms} ms` : '--'}</span>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ color: '#64748b', fontSize: '13px' }}>Awaiting first ping data...</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add Website Modal Popup */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#14171f', border: '1px solid #2d3748', borderRadius: '8px', padding: '24px', width: '400px', boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
             <h3 style={{ margin: '0 0 16px 0', color: '#fff' }}>Add Uptime Endpoint</h3>
             
             <form onSubmit={handleAddWebsite} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.85em', marginBottom: '6px' }}>Service Name</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Production API" 
-                  value={newName} 
-                  onChange={(e) => setNewName(e.target.value)}
-                  style={{ width: '100%', background: '#0f1117', border: '1px solid #2d3748', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '0.9em', outline: 'none' }}
-                  required
-                />
+              <div className="form-group">
+                <label>Service Name</label>
+                <input type="text" placeholder="e.g. Production API" value={newName} onChange={(e) => setNewName(e.target.value)} required />
               </div>
-
-              <div>
-                <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.85em', marginBottom: '6px' }}>Endpoint URL</label>
-                <input 
-                  type="url" 
-                  placeholder="https://api.yourdomain.com" 
-                  value={newUrl} 
-                  onChange={(e) => setNewUrl(e.target.value)}
-                  style={{ width: '100%', background: '#0f1117', border: '1px solid #2d3748', color: '#fff', padding: '8px 12px', borderRadius: '6px', fontSize: '0.9em', outline: 'none' }}
-                  required
-                />
+              <div className="form-group">
+                <label>Endpoint URL</label>
+                <input type="url" placeholder="https://api.yourdomain.com" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} required />
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowModal(false)}
-                  style={{ background: 'transparent', border: '1px solid #2d3748', color: '#94a3b8', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  style={{ background: '#3b82f6', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: '6px', fontWeight: '500', cursor: 'pointer' }}
-                >
-                  Save Monitor
-                </button>
+              <div className="form-group">
+                <label>Expected Text (Optional)</label>
+                <input type="text" placeholder="e.g. 'status: healthy'" value={newExpectedText} onChange={(e) => setNewExpectedText(e.target.value)} />
+                <span style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Fails the monitor if this exact text is not in the response payload.</span>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Save Monitor</button>
               </div>
             </form>
           </div>

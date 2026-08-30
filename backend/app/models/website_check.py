@@ -7,9 +7,19 @@ class WebsiteCheck(Base):
     __tablename__ = "website_checks"
 
     id = Column(Integer, primary_key=True, index=True)
-    website_id = Column(Integer, ForeignKey("websites.id"), nullable=False)
-    status = Column(String, nullable=False)
-    response_time_ms = Column(Float, nullable=True)
+    website_id = Column(Integer, ForeignKey("websites.id", ondelete="CASCADE"), nullable=False)
+    
+    # HTTP Status Tracking
+    status = Column(String, nullable=False)        # e.g., "OK", "FAIL", "Assertion Failed"
+    status_code = Column(Integer, nullable=True)   # e.g., 200, 404, 502
+    
+    # Datadog-style Network Breakdown (in milliseconds)
+    response_time_ms = Column(Float, nullable=True) # Total turnaround time
+    dns_time_ms = Column(Float, nullable=True)      # Domain lookup time
+    tcp_time_ms = Column(Float, nullable=True)      # Connection establishment time
+    tls_time_ms = Column(Float, nullable=True)      # SSL/TLS handshake time
+    ttfb_ms = Column(Float, nullable=True)          # Time to first byte
+    
     checked_at = Column(DateTime, default=datetime.utcnow)
 
     website = relationship("Website", back_populates="checks")
