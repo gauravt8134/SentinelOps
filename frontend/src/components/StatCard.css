@@ -1,16 +1,37 @@
 .stat-card {
-  background-color: var(--bg-card);
+  position: relative;
+  background: linear-gradient(180deg, #151b28 0%, #10151f 100%);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 22px;
   display: flex;
   align-items: center;
   gap: 16px;
-  transition: border-color 0.2s ease;
+  overflow: hidden;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.4), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
 .stat-card:hover {
-  border-color: var(--accent-cyan);
+  transform: translateY(-3px);
+  border-color: rgba(0, 229, 255, 0.35);
+  box-shadow: 0 8px 30px rgba(0, 229, 255, 0.08), 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card:hover::before {
+  opacity: 1;
 }
 
 .stat-icon {
@@ -21,44 +42,55 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .icon-cyan {
-  background-color: rgba(0, 229, 255, 0.1);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.18), rgba(0, 229, 255, 0.05));
   color: var(--accent-cyan);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.15);
 }
 
 .icon-green {
-  background-color: rgba(57, 255, 136, 0.1);
+  background: linear-gradient(135deg, rgba(57, 255, 136, 0.18), rgba(57, 255, 136, 0.05));
   color: var(--accent-green);
+  box-shadow: 0 0 16px rgba(57, 255, 136, 0.15);
 }
 
 .icon-red {
-  background-color: rgba(255, 71, 87, 0.1);
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.18), rgba(255, 71, 87, 0.05));
   color: var(--accent-red);
+  box-shadow: 0 0 16px rgba(255, 71, 87, 0.15);
 }
 
 .icon-amber {
-  background-color: rgba(255, 176, 32, 0.1);
+  background: linear-gradient(135deg, rgba(255, 176, 32, 0.18), rgba(255, 176, 32, 0.05));
   color: var(--accent-amber);
+  box-shadow: 0 0 16px rgba(255, 176, 32, 0.15);
 }
 
 .stat-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  position: relative;
+  z-index: 1;
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
   font-family: var(--font-mono);
+  letter-spacing: -0.02em;
 }
 
 .stat-suffix {
@@ -67,3 +99,4 @@
   margin-left: 4px;
   font-weight: 500;
 }
+

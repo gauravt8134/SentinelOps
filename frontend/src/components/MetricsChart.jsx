@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import api from '../api';
 import './MetricsChart.css';
 
@@ -34,7 +34,17 @@ function MetricsChart({ serverId }) {
 
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <LineChart data={metrics}>
+      <AreaChart data={metrics}>
+        <defs>
+          <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#00e5ff" stopOpacity={0.35} />
+            <stop offset="95%" stopColor="#00e5ff" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="ramGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#39ff88" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#39ff88" stopOpacity={0} />
+          </linearGradient>
+        </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#1f2733" vertical={false} />
         <XAxis dataKey="time" stroke="#8b949e" fontSize={12} tickLine={false} axisLine={false} />
         <YAxis stroke="#8b949e" fontSize={12} tickLine={false} axisLine={false} unit="%" />
@@ -47,9 +57,9 @@ function MetricsChart({ serverId }) {
           }}
           labelStyle={{ color: '#8b949e' }}
         />
-        <Line type="monotone" dataKey="cpu" name="CPU %" stroke="#00e5ff" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="ram" name="RAM %" stroke="#39ff88" strokeWidth={2} dot={false} />
-      </LineChart>
+        <Area type="monotone" dataKey="ram" name="RAM %" stroke="#39ff88" strokeWidth={2} fill="url(#ramGradient)" />
+        <Area type="monotone" dataKey="cpu" name="CPU %" stroke="#00e5ff" strokeWidth={2} fill="url(#cpuGradient)" />
+      </AreaChart>
     </ResponsiveContainer>
   );
 }

@@ -31,15 +31,18 @@ def get_website_checks(website_id: int, db: Session = Depends(get_db)):
 
 @router.delete("/websites/{website_id}")
 def delete_website(website_id: int, db: Session = Depends(get_db)):
-    # Find the specific website in the database
+    # 1. Find the specific website in the database
     site = db.query(Website).filter(Website.id == website_id).first()
     
-    # If it doesn't exist, throw a 404 error
+    # 2. If it doesn't exist, throw a 404 error
     if not site:
         raise HTTPException(status_code=404, detail="Website not found")
     
-    # Delete the website and commit the change
+    # 3. Delete all historical checks (pings) associated with this website first
+    db.query(WebsiteCheck).filter(WebsiteCheck.website_id == website_id).delete()
+    
+    # 4. Now it is safe to delete the website itself
     db.delete(site)
     db.commit()
     
-    return {"message": "Website deleted successfully"}
+    return {"message": "Website and its history deleted successfully"}

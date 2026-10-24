@@ -1,14 +1,25 @@
 from app.db.database import SessionLocal
 from sqlalchemy import text
 
-print("Upgrading PostgreSQL schema for Docker...")
+print("Upgrading PostgreSQL schema for monitoring/auto-heal features...")
 
 db = SessionLocal()
 try:
-    # Forces PostgreSQL to add the missing Docker column!
-    db.execute(text("ALTER TABLE metrics ADD COLUMN IF NOT EXISTS docker_containers INTEGER DEFAULT 0;"))
+    # Website table — store the last known failure reason + auto-heal cooldown timestamp
+    db.execute(text(
+        "ALTER TABLE websites ADD COLUMN IF NOT EXISTS failure_reason VARCHAR;"
+    ))
+    db.execute(text(
+        "ALTER TABLE websites ADD COLUMN IF NOT EXISTS last_recovery_attempt TIMESTAMPTZ;"
+    ))
+
+    # WebsiteCheck table — store the failure reason per historical check too
+    db.execute(text(
+        "ALTER TABLE website_checks ADD COLUMN IF NOT EXISTS failure_reason VARCHAR;"
+    ))
+
     db.commit()
-    print("Success! The database schema is ready for Docker data.")
+    print("Success! Schema is ready for failure_reason + auto-heal cooldown tracking.")
 except Exception as e:
     print(f"Error: {e}")
     db.rollback()

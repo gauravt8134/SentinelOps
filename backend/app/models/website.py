@@ -12,11 +12,17 @@ class Website(Base):
     status = Column(String, default="unknown")
     last_checked_at = Column(DateTime, nullable=True)
     response_time_ms = Column(Float, nullable=True)
-    
+
     # Store days until the SSL certificate expires
     ssl_expiry_days = Column(Integer, nullable=True)
-    
-    # NEW: Store expected text for Payload Assertions
+
+    # Store expected text for Payload Assertions
     expected_text = Column(String, nullable=True)
+
+    # NEW: human-readable reason for the last failure (e.g. "Connection Refused")
+    failure_reason = Column(String, nullable=True)
+
+    # NEW: timestamp of the last auto-heal attempt, used for the recovery cooldown
+    last_recovery_attempt = Column(DateTime, nullable=True)
 
     checks = relationship("WebsiteCheck", back_populates="website")

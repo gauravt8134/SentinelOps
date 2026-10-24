@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Server, Globe, Activity, AlertTriangle, Clock, Terminal } from 'lucide-react';
+import { 
+  Server, Globe, Activity, AlertTriangle, Terminal, 
+  Cpu, Zap, ShieldCheck, HardDrive
+} from 'lucide-react';
 import StatCard from '../components/StatCard';
 import MetricsChart from '../components/MetricsChart';
 import api from '../api';
 import './Dashboard.css';
 
-// Helper to make large numbers look professional (e.g., 7125 -> 7.1K)
 const formatCompactNumber = (number) => {
   return new Intl.NumberFormat('en-US', {
     notation: 'compact',
     maximumFractionDigits: 1
   }).format(number);
+};
+
+const getStatusColor = (percent) => {
+  if (percent > 85) return 'fill-critical';
+  if (percent > 70) return 'fill-warn';
+  return 'fill-safe';
 };
 
 function Dashboard() {
@@ -33,12 +41,10 @@ function Dashboard() {
         setWebsites(websitesRes.data);
         setApmStats(apmRes.data);
 
-        // Default to the first server if none selected
         if (serversRes.data.length > 0 && !selectedServerId) {
           setSelectedServerId(serversRes.data[0].id);
         }
 
-        // Fetch latest metrics for all servers to display runtime info in the metadata bar
         const metricsPromises = serversRes.data.map((server) =>
           api.get(`/metrics/${server.id}`).then((r) => ({ id: server.id, data: r.data }))
         );
@@ -63,135 +69,154 @@ function Dashboard() {
     return () => clearInterval(interval);
   }, [selectedServerId]);
 
-  const websitesUp = websites.filter((w) => w.status === 'up').length;
-  const totalRequests = apmStats.reduce((sum, stat) => sum + stat.total_requests, 0);
-  const avgErrorRate =
-    apmStats.length > 0
-      ? (apmStats.reduce((sum, stat) => sum + stat.error_rate_percent, 0) / apmStats.length).toFixed(1)
-      : 0;
+  const websitesUp = websites.filter((w) => w.status === 'up' || w.status === 'healthy').length;
+  const totalRequests = apmStats.reduce((sum, stat) => sum + (stat.total_requests || 0), 0);
+  const avgErrorRate = apmStats.length > 0
+    ? (apmStats.reduce((sum, stat) => sum + (stat.error_rate_percent || 0), 0) / apmStats.length).toFixed(1)
+    : 0;
 
   const activeServer = servers.find((s) => s.id === selectedServerId) || servers[0];
   const activeMetric = selectedServerId ? latestMetrics[selectedServerId] : null;
 
-  if (loading) {
-    return <div className="loading-text">Loading dashboard...</div>;
-  }
+  if (loading) return <div className="loading-text">Initializing Command Center...</div>;
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      {/* HEADER SECTION */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <h1 className="page-title" style={{ margin: 0 }}>Overview</h1>
-          <p className="page-subtitle" style={{ margin: 0 }}>Real-time system health at a glance</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+            <span style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75em', fontWeight: 'bold', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+              ENVIRONMENT: PRODUCTION
+            </span>
+          </div>
+          <h1 className="page-title" style={{ margin: 0 }}>Global Overview</h1>
         </div>
 
-        {/* Scalable Server Selector Dropdown */}
         {servers.length > 0 && (
-          <div style={{ position: 'relative', minWidth: '220px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ color: '#94a3b8', fontSize: '0.85em' }}>Telemetry Focus:</span>
             <select
               value={selectedServerId || ''}
               onChange={(e) => setSelectedServerId(Number(e.target.value))}
               style={{
-                appearance: 'none',
-                width: '100%',
-                backgroundColor: '#14171f',
-                color: '#fff',
-                border: '1px solid #232836',
-                padding: '10px 40px 10px 16px',
-                borderRadius: '8px',
-                fontSize: '0.9em',
-                fontWeight: '500',
-                cursor: 'pointer',
-                outline: 'none',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                appearance: 'none', backgroundColor: '#12151e', color: '#fff', border: '1px solid #232836',
+                padding: '8px 36px 8px 12px', borderRadius: '6px', fontSize: '0.9em', cursor: 'pointer', outline: 'none'
               }}
             >
-              {servers.map((server) => (
-                <option key={server.id} value={server.id} style={{ background: '#1a1d24', color: '#fff' }}>
-                  {server.name} ({server.ip_address})
-                </option>
+              {servers.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
-            {/* Custom dropdown arrow for a clean look */}
-            <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#94a3b8', fontSize: '0.8em' }}>
-              ▼
-            </div>
           </div>
         )}
       </div>
 
-      {/* STAT CARDS GRID */}
-      <div className="stats-grid">
-        <StatCard label="Total Servers" value={servers.length} icon={Server} accentColor="cyan" />
-        <StatCard label="Websites Up" value={`${websitesUp}/${websites.length}`} icon={Globe} accentColor="green" />
-        {/* API Requests now uses the compact formatter */}
-        <StatCard label="API Requests" value={formatCompactNumber(totalRequests)} icon={Activity} accentColor="cyan" />
-        <StatCard
-          label="Avg Error Rate"
-          value={avgErrorRate}
-          suffix="%"
-          icon={AlertTriangle}
-          accentColor={avgErrorRate > 5 ? 'red' : 'amber'}
-        />
+      <div className="dashboard-grid">
+        {/* ROW 1: CORE KPIs */}
+        <div className="span-3"><StatCard label="Active Nodes" value={servers.length} icon={Server} accentColor="cyan" /></div>
+        <div className="span-3"><StatCard label="Uptime Status" value={`${websitesUp}/${websites.length}`} icon={Globe} accentColor="green" /></div>
+        <div className="span-3"><StatCard label="Total Throughput" value={formatCompactNumber(totalRequests)} icon={Activity} accentColor="cyan" /></div>
+        <div className="span-3"><StatCard label="System Error Rate" value={avgErrorRate} suffix="%" icon={AlertTriangle} accentColor={avgErrorRate > 5 ? 'red' : 'amber'} /></div>
+
+        {/* ROW 2: SPLIT VIEW */}
+        
+        {/* Left Column: Focused Node Utilization */}
+        <div className="widget-panel span-6">
+          <div className="widget-header">
+            <h3 className="widget-title"><Cpu size={16} color="#38bdf8" /> Node Utilization</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1, justifyContent: 'center' }}>
+            {activeServer ? (() => {
+              const cpu = activeMetric?.cpu_percent || 0;
+              const ram = activeMetric?.memory_percent || 0;
+              const disk = activeMetric?.disk_percent || 0;
+              
+              return (
+                <div style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #1f2430' }}>
+                    <strong style={{ color: '#e2e8f0', fontSize: '1.1em' }}>{activeServer.name}</strong>
+                    <span style={{ fontSize: '0.9em', color: '#94a3b8', fontFamily: 'monospace' }}>{activeServer.ip_address}</span>
+                  </div>
+                  
+                  {/* CPU Bar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '0.85em', color: '#94a3b8', marginBottom: '16px' }}>
+                    <span style={{ width: '40px', fontWeight: 'bold' }}>CPU</span>
+                    <div className="progress-track" style={{ height: '8px' }}><div className={`progress-fill ${getStatusColor(cpu)}`} style={{ width: `${cpu}%` }}></div></div>
+                    <span style={{ width: '45px', textAlign: 'right' }}>{cpu.toFixed(0)}%</span>
+                  </div>
+
+                  {/* RAM Bar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '0.85em', color: '#94a3b8', marginBottom: '16px' }}>
+                    <span style={{ width: '40px', fontWeight: 'bold' }}>RAM</span>
+                    <div className="progress-track" style={{ height: '8px' }}><div className={`progress-fill ${getStatusColor(ram)}`} style={{ width: `${ram}%` }}></div></div>
+                    <span style={{ width: '45px', textAlign: 'right' }}>{ram.toFixed(0)}%</span>
+                  </div>
+
+                  {/* DISK Bar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '0.85em', color: '#94a3b8' }}>
+                    <span style={{ width: '40px', fontWeight: 'bold' }}>DISK</span>
+                    <div className="progress-track" style={{ height: '8px' }}><div className={`progress-fill ${getStatusColor(disk)}`} style={{ width: `${disk}%` }}></div></div>
+                    <span style={{ width: '45px', textAlign: 'right' }}>{disk.toFixed(0)}%</span>
+                  </div>
+                </div>
+              );
+            })() : (
+              <div style={{ color: '#64748b', textAlign: 'center' }}>No active node selected.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Application Layer Health */}
+        <div className="widget-panel span-6">
+          <div className="widget-header">
+            <h3 className="widget-title"><Zap size={16} color="#8b5cf6" /> Service Topology & Routing</h3>
+          </div>
+          <div>
+            <h4 style={{ color: '#94a3b8', fontSize: '0.75em', textTransform: 'uppercase', marginBottom: '8px', marginTop: 0 }}>API Endpoints</h4>
+            {apmStats.slice(0, 3).map((stat, idx) => (
+              <div key={idx} className="mini-stat-row">
+                <span style={{ fontFamily: 'monospace', fontSize: '0.85em', color: '#e2e8f0' }}>{stat.endpoint}</span>
+                <span style={{ background: stat.error_rate_percent > 5 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', color: stat.error_rate_percent > 5 ? '#ef4444' : '#10b981', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75em' }}>
+                  {stat.error_rate_percent}% Err
+                </span>
+              </div>
+            ))}
+            
+            <h4 style={{ color: '#94a3b8', fontSize: '0.75em', textTransform: 'uppercase', marginBottom: '8px', marginTop: '20px' }}>Synthetic Uptime Checks</h4>
+            {websites.slice(0, 3).map((site, idx) => (
+              <div key={idx} className="mini-stat-row">
+                <span style={{ fontSize: '0.85em', color: '#e2e8f0' }}>{site.name}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: site.status === 'up' ? '#10b981' : '#ef4444', fontSize: '0.8em' }}>
+                  {site.status === 'up' ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />} {site.status.toUpperCase()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ROW 3: THE MAIN TELEMETRY CHART */}
+        {activeServer && (
+          <div className="widget-panel span-12">
+             <div className="widget-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <h3 className="widget-title"><Activity size={16} color="#10b981" /> Node Telemetry Stream</h3>
+                  <span style={{ background: '#1a1d24', padding: '4px 10px', borderRadius: '4px', fontSize: '0.75em', color: '#94a3b8', border: '1px solid #232836' }}>
+                    Target: {activeServer.name} ({activeServer.ip_address})
+                  </span>
+                </div>
+                {activeMetric && (
+                  <div style={{ display: 'flex', gap: '12px', fontSize: '0.8em', color: '#94a3b8' }}>
+                    <span>OS: <strong style={{color:'#fff'}}>{activeMetric.os_type}</strong></span>
+                    <span>Uptime: <strong style={{color:'#fff'}}>{Math.floor(activeMetric.uptime_seconds / 3600)}h</strong></span>
+                  </div>
+                )}
+             </div>
+             <MetricsChart serverId={activeServer.id} />
+          </div>
+        )}
+
       </div>
-
-      {/* SYS PULSE STYLE TELEMETRY METADATA BAR */}
-      {activeMetric && activeServer && (
-        <div style={{
-          background: '#14171f',
-          border: '1px solid #232836',
-          borderRadius: '10px',
-          padding: '12px 20px',
-          marginTop: '24px', // <-- Added space above the bar
-          marginBottom: '24px', // <-- Added space below the bar
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '24px',
-          alignItems: 'center',
-          fontSize: '0.85em',
-          color: '#cbd5e1'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Server size={14} color="#3b82f6" />
-            <span style={{ color: '#94a3b8' }}>Host:</span>
-            <strong style={{ color: '#fff' }}>{activeServer.name}</strong>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Terminal size={14} color="#10b981" />
-            <span style={{ color: '#94a3b8' }}>OS:</span>
-            <span style={{ color: '#fff' }}>{activeMetric.os_type || 'Unknown'} ({activeMetric.arch || 'x86_64'})</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>🐍</span>
-            <span style={{ color: '#94a3b8' }}>Python:</span>
-            <span style={{ color: '#fff' }}>{activeMetric.python_version || '3.11.0'}</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Clock size={14} color="#f59e0b" />
-            <span style={{ color: '#94a3b8' }}>Uptime:</span>
-            <span style={{ color: '#fff' }}>{Math.floor((activeMetric.uptime_seconds || 0) / 3600)}h {Math.floor(((activeMetric.uptime_seconds || 0) % 3600) / 60)}m</span>
-          </div>
-
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ height: '7px', width: '7px', backgroundColor: '#10b981', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 6px #10b981' }}></span>
-            <span style={{ color: '#10b981', fontWeight: '600', fontSize: '0.8em' }}>LIVE</span>
-          </div>
-        </div>
-      )}
-
-      {/* LIVE SERVER METRICS CHART */}
-      {activeServer && (
-        <div className="chart-card">
-          <div className="chart-card-header">
-            <h2 className="chart-title">Live Server Metrics</h2>
-            <span className="chart-subtitle">{activeServer.name}</span>
-          </div>
-          <MetricsChart serverId={activeServer.id} />
-        </div>
-      )}
     </div>
   );
 }
