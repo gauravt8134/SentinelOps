@@ -2,9 +2,8 @@
 
 > AI-Powered Observability, Monitoring & Security Platform
 
-SentinelOps is a production-grade observability platform inspired by Datadog.
-It monitors servers, applications, containers, and infrastructure from one
-centralized dashboard — with AI-powered incident analysis.
+SentinelOps is a production-grade observability platform inspired by Datadog.  
+It monitors servers, applications, containers, and infrastructure from one centralized dashboard — with AI-powered incident analysis.
 
 ---
 
@@ -16,11 +15,12 @@ centralized dashboard — with AI-powered incident analysis.
 - 🚨 **Alerting** — Email and Telegram notifications
 - 🤖 **AI Analysis** — Explain alerts, suggest root causes, summarize incidents
 - 🔐 **Security** — Authentication, Authorization, Audit Logs
-- 📈 **Dashboards** — Beautiful real-time charts and server health cards
+- 📈 **Dashboards** — Real-time charts and server health cards
 
 ---
 
 ## 🏗️ Architecture
+
 ---
 
 ## 🛠️ Tech Stack
@@ -56,4 +56,3 @@ centralized dashboard — with AI-powered incident analysis.
 ## 📄 License
 
 MIT License — see [LICENSE](LICENSE) for details.
-
