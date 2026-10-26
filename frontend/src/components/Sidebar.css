@@ -1,11 +1,11 @@
 .sidebar {
   width: 240px;
   height: 100vh;
-  background-color: var(--bg-secondary);
+  background: linear-gradient(180deg, rgba(16, 21, 31, .98), rgba(10, 14, 20, .98));
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 24px 16px;
+  padding: 22px 14px;
   position: fixed;
   left: 0;
   top: 0;
@@ -42,22 +42,23 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 12px 13px;
   border-radius: 8px;
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .nav-item:hover {
-  background-color: var(--bg-card);
+  background-color: rgba(30, 41, 59, .55);
   color: var(--text-primary);
 }
 
 .nav-item.active {
-  background-color: rgba(0, 229, 255, 0.1);
+  background: linear-gradient(90deg, rgba(0, 229, 255, .14), rgba(0, 229, 255, .04));
   color: var(--accent-cyan);
 }
 

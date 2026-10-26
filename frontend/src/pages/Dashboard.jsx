@@ -67,13 +67,24 @@ function Dashboard() {
     fetchData();
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
-  }, [selectedServerId]);
-
-  const websitesUp = websites.filter((w) => w.status === 'up' || w.status === 'healthy').length;
+  }, [selectedServerId]);  const websitesUp = websites.filter((w) => w.status === 'up' || w.status === 'healthy').length;
   const totalRequests = apmStats.reduce((sum, stat) => sum + (stat.total_requests || 0), 0);
-  const avgErrorRate = apmStats.length > 0
-    ? (apmStats.reduce((sum, stat) => sum + (stat.error_rate_percent || 0), 0) / apmStats.length).toFixed(1)
+  const totalErrors = apmStats.reduce((sum, stat) => {
+    return sum + (stat.error_count || stat.errors || 0);
+  }, 0);
+  const systemErrorRate = totalRequests > 0
+    ? ((totalErrors / totalRequests) * 100).toFixed(1)
     : 0;
+
+  const activeNodes = servers.filter((server) => {
+    const metric = latestMetrics[server.id];
+    if (!metric?.recorded_at) return false;
+
+    const ageInSeconds =
+      (Date.now() - new Date(metric.recorded_at).getTime()) / 1000;
+
+    return ageInSeconds <= 90;
+  }).length;
 
   const activeServer = servers.find((s) => s.id === selectedServerId) || servers[0];
   const activeMetric = selectedServerId ? latestMetrics[selectedServerId] : null;
@@ -114,10 +125,10 @@ function Dashboard() {
 
       <div className="dashboard-grid">
         {/* ROW 1: CORE KPIs */}
-        <div className="span-3"><StatCard label="Active Nodes" value={servers.length} icon={Server} accentColor="cyan" /></div>
-        <div className="span-3"><StatCard label="Uptime Status" value={`${websitesUp}/${websites.length}`} icon={Globe} accentColor="green" /></div>
+        <div className="span-3"><StatCard label="Active Nodes" value={activeNodes} icon={Server} accentColor="cyan" /></div>
+        <div className="span-3"><StatCard label="Synthetic Checks" value={`${websitesUp}/${websites.length}`} icon={Globe} accentColor="green" /></div>
         <div className="span-3"><StatCard label="Total Throughput" value={formatCompactNumber(totalRequests)} icon={Activity} accentColor="cyan" /></div>
-        <div className="span-3"><StatCard label="System Error Rate" value={avgErrorRate} suffix="%" icon={AlertTriangle} accentColor={avgErrorRate > 5 ? 'red' : 'amber'} /></div>
+        <div className="span-3"><StatCard label="System Error Rate" value={systemErrorRate} suffix="%" icon={AlertTriangle} accentColor={systemErrorRate > 5 ? 'red' : 'amber'} /></div>
 
         {/* ROW 2: SPLIT VIEW */}
         

@@ -11,6 +11,7 @@
   --accent-amber: #ffb020;
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --shadow-card: 0 16px 44px rgba(0, 0, 0, 0.22);
 }
 
 * {
@@ -24,6 +25,8 @@ body {
   color: var(--text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  background-image: linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px);
+  background-size: 36px 36px;
 }
 
 #root {
@@ -42,3 +45,7 @@ body {
   background: var(--border-color);
   border-radius: 4px;
 }
+button, input, select { font: inherit; }
+.page-title { font-size: clamp(28px, 3vw, 42px); line-height: 1.06; letter-spacing: -.045em; font-weight: 760; color: #f8fafc; }
+.page-subtitle { color: #94a3b8; margin-top: 8px; font-size: 14px; line-height: 1.5; }
+.loading-text { min-height: 320px; display: grid; place-items: center; color: #94a3b8; font-size: 13px; }

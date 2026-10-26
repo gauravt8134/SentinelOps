@@ -68,7 +68,9 @@ def get_apm_stats(db: Session = Depends(get_db)):
             "method": row.method,
             "total_requests": row.total_requests,
             "avg_response_time_ms": round(row.avg_response_time_ms, 2),
+            "error_count": row.error_count,
             "error_rate_percent": round(error_rate, 2)
         })
 
     return stats
+

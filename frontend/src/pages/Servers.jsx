@@ -4,7 +4,7 @@ import {
   Server as ServerIcon, Cpu, HardDrive, MemoryStick, 
   Clock, Activity, ArrowDown, ArrowUp, AlertTriangle, AlertCircle,
   Search, Filter, MoreVertical, TrendingUp, TrendingDown, Tag, ChevronRight,
-  Terminal, BellOff, RefreshCw, CheckCircle2, Plus, X
+  Terminal, BellOff, RefreshCw, CheckCircle2, Plus, X, Trash2
 } from 'lucide-react';
 import api from '../api';
 import './Servers.css';
@@ -70,18 +70,29 @@ function Servers() {
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState(null);
+  const [toastIsError, setToastIsError] = useState(false);
 
   // Add Server Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newServerForm, setNewServerForm] = useState({ name: '', ip_address: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete Server Modal States
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
-  // Used to force a fast refresh when a new server is added
+  // Used to force a fast refresh when a server is added or deleted
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('name');
+
+  const showToast = (message, isError = false) => {
+    setToastIsError(isError);
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   useEffect(() => {
     async function fetchServers() {
@@ -112,22 +123,36 @@ function Servers() {
     fetchServers();
     const interval = setInterval(fetchServers, 10000);
     return () => clearInterval(interval);
-  }, [refreshTrigger]); // Added refreshTrigger to dependency array
+  }, [refreshTrigger]);
 
   const handleServerAction = (serverId, serverName, actionType) => {
     setActiveDropdown(null); 
     
     if (actionType === 'logs') {
-      setToastMessage(`Fetching recent logs for ${serverName}...`);
+      showToast(`Fetching recent logs for ${serverName}...`);
     } else if (actionType === 'mute') {
-      setToastMessage(`Alerts muted for ${serverName} (1 hour).`);
+      showToast(`Alerts muted for ${serverName} (1 hour).`);
     } else if (actionType === 'restart') {
-      setToastMessage(`Restart command sent to ${serverName} agent.`);
+      showToast(`Restart command sent to ${serverName} agent.`);
     }
+  };
 
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
+  // DELETE SERVER LOGIC
+  const handleDeleteServer = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/servers/${deleteTarget.id}`);
+      setServers((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      showToast(`${deleteTarget.name} deleted.`);
+      setDeleteTarget(null);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (error) {
+      console.error('Failed to delete server:', error);
+      showToast(`Could not delete ${deleteTarget.name}.`, true);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // ADD SERVER LOGIC
@@ -144,8 +169,7 @@ function Servers() {
       setNewServerForm({ name: '', ip_address: '' });
       setIsAddModalOpen(false);
       
-      setToastMessage(`${newServerForm.name} registered successfully!`);
-      setTimeout(() => setToastMessage(null), 3000);
+      showToast(`${newServerForm.name} registered successfully!`);
 
       // Force an immediate fetch to show the new card
       setRefreshTrigger(prev => prev + 1); 
@@ -210,7 +234,7 @@ function Servers() {
             <option value="alerting">Alerting Only</option>
           </select>
 
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ background: '#0f1117', border: '1px solid #2d3748', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '0.85em', outline: 'none', cursor: 'pointer' }}>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ background: '#0f1117', border: '1px solid #2d3748', color:'#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '0.85em', outline: 'none', cursor: 'pointer' }}>
             <option value="name">Sort: Name (A-Z)</option>
             <option value="cpu">Sort: Highest CPU</option>
             <option value="ram">Sort: Highest RAM</option>
@@ -271,8 +295,17 @@ function Servers() {
                       <button onClick={() => handleServerAction(server.id, server.name, 'mute')}>
                         <BellOff size={14} /> Mute Alerts
                       </button>
-                      <button className="danger-btn" onClick={() => handleServerAction(server.id, server.name, 'restart')}>
+                      <button onClick={() => handleServerAction(server.id, server.name, 'restart')}>
                         <RefreshCw size={14} /> Restart Agent
+                      </button>
+                      <button
+                        className="danger-btn"
+                        onClick={() => {
+                          setActiveDropdown(null);
+                          setDeleteTarget({ id: server.id, name: server.name });
+                        }}
+                      >
+                        <Trash2 size={14} /> Delete Node
                       </button>
                     </div>
                   )}
@@ -297,7 +330,7 @@ function Servers() {
                   </span>
                   
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#1a1d24', border: '1px solid #2d3748', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7em', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#1a1d24', border: '1px solid #2d3748',padding: '2px 6px', borderRadius: '4px', fontSize: '0.7em', color: '#94a3b8', whiteSpace: 'nowrap' }}>
                       <Tag size={10} /> {envTag}
                     </span>
                     {metric?.docker_containers > 0 && (
@@ -462,14 +495,56 @@ function Servers() {
         </div>
       )}
 
+      {/* DELETE NODE CONFIRM MODAL */}
+      {deleteTarget && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#1e293b', padding: '24px', borderRadius: '12px', width: '420px', border: '1px solid #334155', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }}>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ background: 'rgba(239, 68, 68, 0.12)', padding: '10px', borderRadius: '8px', display: 'flex' }}>
+                <Trash2 size={20} color="#ef4444" />
+              </div>
+              <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px' }}>Delete this node?</h3>
+            </div>
+
+            <p style={{ color: '#cbd5e1', fontSize: '14px', lineHeight: 1.5, margin: '0 0 8px 0' }}>
+              <strong style={{ color: '#fff' }}>{deleteTarget.name}</strong> and all of its stored metrics will be permanently removed. This cannot be undone.
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: '12px', lineHeight: 1.5, margin: '0 0 24px 0' }}>
+              If the agent is still running on that PC, it will register itself again and the node will come back. Uninstall the agent on that PC first to remove it for good.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button 
+                type="button" 
+                onClick={() => setDeleteTarget(null)} 
+                disabled={isDeleting}
+                style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #475569', color: '#cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleDeleteServer} 
+                disabled={isDeleting} 
+                style={{ padding: '8px 16px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: isDeleting ? 'not-allowed' : 'pointer', opacity: isDeleting ? 0.7 : 1 }}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Node'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification Component */}
       {toastMessage && (
         <div style={{
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          background: '#10b981',
-          color: '#0f1117',
+          background: toastIsError ? '#ef4444' : '#10b981',
+          color: toastIsError ? '#fff' : '#0f1117',
           padding: '12px 20px',
           borderRadius: '8px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
@@ -480,7 +555,7 @@ function Servers() {
           zIndex: 9999,
           animation: 'slideIn 0.3s ease-out'
         }}>
-          <CheckCircle2 size={18} />
+          {toastIsError ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
           {toastMessage}
         </div>
       )}
